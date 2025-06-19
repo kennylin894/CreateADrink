@@ -22,6 +22,11 @@ local notificationRemote = Instance.new("RemoteEvent")
 notificationRemote.Name = "ShowNotification"
 notificationRemote.Parent = remoteEvents
 
+-- 🌿 NEW: Create BindableEvent for garden system communication
+local plotClaimedBindable = Instance.new("BindableEvent")
+plotClaimedBindable.Name = "PlotClaimed"
+plotClaimedBindable.Parent = ReplicatedStorage
+
 -- Update plot appearance
 local function updatePlotAppearance(plotNumber, isOwned, ownerName)
 	local claimPart = workspace:FindFirstChild("ClaimPart" .. plotNumber)
@@ -98,6 +103,9 @@ local function claimPlot(player, plotNumber)
 	claimedPlots[plotNumber] = player.UserId
 	playerPlots[player.UserId] = plotNumber
 	updatePlotAppearance(plotNumber, true, player.Name)
+	
+	-- 🌿 NEW: Notify garden system about plot claim
+	plotClaimedBindable:Fire(plotNumber, player.UserId, player.Name)
 
 	return true, "Successfully claimed plot " .. plotNumber .. "!"
 end
@@ -279,6 +287,7 @@ Players.PlayerRemoving:Connect(function(player)
 	if plotNumber then
 		claimedPlots[plotNumber] = nil
 		playerPlots[player.UserId] = nil
+		-- 🌿 NEW: Also clear garden ownership (handled by garden script)
 		updatePlotAppearance(plotNumber, false, "")
 		print("Plot " .. plotNumber .. " is now available (player left)")
 	end
