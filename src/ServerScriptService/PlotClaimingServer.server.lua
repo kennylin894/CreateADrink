@@ -1,11 +1,13 @@
--- SERVER SCRIPT - Script
+-- PLOT SYSTEM SCRIPT - Put in ServerScriptService
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local claimedPlots = {}
 local playerPlots = {}
+local playerCooldowns = {}
 local PLOTS_COUNT = 6
 local PLOT_NUMBERS = {1, 2, 3, 4, 5, 6}
+local ERROR_COOLDOWN = 3
 
 -- Create RemoteEvents
 local remoteEvents = Instance.new("Folder")
@@ -34,12 +36,12 @@ local function updatePlotAppearance(plotNumber, isOwned, ownerName)
 	if isOwned then
 		claimButton.Visible = false
 		ownerLabel.Visible = true
-		ownerLabel.Text = "🏪 " .. ownerName .. "'s Shop 🏪"
-		claimPart.BrickColor = BrickColor.new("Really red")
+		ownerLabel.Text = "🥤 " .. ownerName .. "'s Drink Stand 🥤"
+		claimPart.Transparency = 1
 	else
 		claimButton.Visible = true
 		ownerLabel.Visible = false
-		claimPart.BrickColor = BrickColor.new("Lime green")
+		claimPart.Transparency = 1
 	end
 
 	spawn(function()
@@ -57,18 +59,40 @@ local function claimPlot(player, plotNumber)
 		return false, "Invalid plot number"
 	end
 
+	-- If player already owns this exact plot, do nothing (no error)
 	if playerPlots[player.UserId] == plotNumber then
-		return false, "You already claimed this plot!"
+		return "silent", "You already own this plot"
 	end
 
+	-- If player tries to claim a different plot, show error with cooldown
 	if playerPlots[player.UserId] then
-		return false, "You already own plot " .. playerPlots[player.UserId] .. "!"
+		-- Check cooldown
+		local currentTime = tick()
+		local lastErrorTime = playerCooldowns[player.UserId] or 0
+		
+		if currentTime - lastErrorTime < ERROR_COOLDOWN then
+			return "silent", "Please wait before trying again"
+		end
+		
+		-- Set new cooldown
+		playerCooldowns[player.UserId] = currentTime
+		return false, "You already own drink stand " .. playerPlots[player.UserId] .. "!"
 	end
 
 	if claimedPlots[plotNumber] then
 		local owner = Players:GetPlayerByUserId(claimedPlots[plotNumber])
 		local ownerName = owner and owner.Name or "Unknown"
-		return false, "Plot " .. plotNumber .. " is already owned by " .. ownerName
+		
+		-- Check cooldown for this error too
+		local currentTime = tick()
+		local lastErrorTime = playerCooldowns[player.UserId] or 0
+		
+		if currentTime - lastErrorTime < ERROR_COOLDOWN then
+			return "silent", "Please wait before trying again"
+		end
+		
+		playerCooldowns[player.UserId] = currentTime
+		return false, "Drink stand " .. plotNumber .. " is already owned by " .. ownerName
 	end
 
 	claimedPlots[plotNumber] = player.UserId
@@ -82,12 +106,15 @@ end
 local function onPlotClicked(player, plotNumber)
 	local success, message = claimPlot(player, plotNumber)
 
-	if success then
+	if success == true then
 		print("🎉 " .. player.Name .. " successfully claimed plot " .. plotNumber .. "!")
-		notificationRemote:FireClient(player, "success", "🎉 Successfully claimed Plot " .. plotNumber .. "! 🎉", "You now own this plot and can start farming!")
-	else
+		notificationRemote:FireClient(player, "success", "🥤 Successfully claimed Drink Stand " .. plotNumber .. "! 🥤", "You now own this stand and can start serving drinks!")
+	elseif success == false then
 		print("❌ Claim failed: " .. message)
-		notificationRemote:FireClient(player, "error", "❌ Cannot Claim Plot", message)
+		notificationRemote:FireClient(player, "error", "❌ Cannot Claim Stand", message)
+	elseif success == "silent" then
+		print("🔇 Silent action: " .. message)
+		-- No notification sent
 	end
 end
 
@@ -131,42 +158,36 @@ local function setupPlotClaiming(plot, plotNumber)
 	claimPart.Anchored = true
 	claimPart.CanCollide = false
 	claimPart.Transparency = 1
-	claimPart.BrickColor = BrickColor.new("Lime green")
-	claimPart.Material = Enum.Material.Neon
-
-	-- Handle different orientations
+	
+	-- Handle different orientations for plots 1&2 vs 3-6
 	if plotNumber == 1 or plotNumber == 2 then
 		claimPart.Size = Vector3.new(plot.Size.Z, 10, plot.Size.X)
 	else
 		claimPart.Size = Vector3.new(plot.Size.X, 10, plot.Size.Z)
 	end
-
+	
 	claimPart.Position = plot.Position + Vector3.new(0, 5, 0)
 	claimPart.Parent = workspace
 
-	-- Create ClickDetector
+	-- Create ClickDetector with close range only
 	local clickDetector = Instance.new("ClickDetector")
-	clickDetector.MaxActivationDistance = 20
+	clickDetector.MaxActivationDistance = 25
 	clickDetector.Parent = claimPart
 
 	-- Proximity detection for visibility
 	local function checkPlayerDistance()
 		for _, player in pairs(Players:GetPlayers()) do
 			if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-				local distance = (player.Character.HumanoidRootPart.Position - claimPart.Position).Magnitude
 				local playerOwnsAnyPlot = (playerPlots[player.UserId] ~= nil)
 				local plotIsClaimed = claimedPlots[plotNumber] ~= nil
 
-				if distance < 50 then
-					if playerOwnsAnyPlot then
-						claimPart.Transparency = 1
-					elseif plotIsClaimed then
-						claimPart.Transparency = 1
+				local gui = claimPart:FindFirstChild("ClaimGui")
+				if gui then
+					if playerOwnsAnyPlot and not plotIsClaimed then
+						gui.Enabled = false
 					else
-						claimPart.Transparency = 0.7
+						gui.Enabled = true
 					end
-				else
-					claimPart.Transparency = 1
 				end
 			end
 		end
@@ -181,16 +202,8 @@ local function setupPlotClaiming(plot, plotNumber)
 
 	-- Handle clicks
 	clickDetector.MouseClick:Connect(function(player)
-		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			local distance = (player.Character.HumanoidRootPart.Position - claimPart.Position).Magnitude
-			if distance <= 25 then
-				print("🖱️ CLICK DETECTED on Plot " .. plotNumber .. " by " .. player.Name .. " (Distance: " .. math.floor(distance) .. " studs)")
-				onPlotClicked(player, plotNumber)
-			else
-				print("❌ " .. player.Name .. " tried to claim Plot " .. plotNumber .. " from too far away (Distance: " .. math.floor(distance) .. " studs)")
-				notificationRemote:FireClient(player, "error", "❌ Too Far Away", "You must be closer to the plot to claim it!")
-			end
-		end
+		print("🖱️ CLICK DETECTED on Plot " .. plotNumber .. " by " .. player.Name)
+		onPlotClicked(player, plotNumber)
 	end)
 
 	print("✅ Created ClickDetector for Plot " .. plotNumber)
@@ -205,27 +218,51 @@ local function setupPlotClaiming(plot, plotNumber)
 	local claimButton = Instance.new("TextButton")
 	claimButton.Name = "ClaimButton"
 	claimButton.Size = UDim2.new(1, 0, 0.5, 0)
-	claimButton.BackgroundColor3 = Color3.fromRGB(85, 170, 85)
-	claimButton.Text = "🌱 CLAIM PLOT " .. plotNumber .. " 🌱"
+	claimButton.Position = UDim2.new(0, 0, 0.25, 0)
+	claimButton.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
+	claimButton.Text = "🥤 CLAIM DRINK STAND " .. plotNumber .. " 🥤"
 	claimButton.TextColor3 = Color3.new(1, 1, 1)
 	claimButton.TextScaled = true
 	claimButton.Font = Enum.Font.GothamBold
-	claimButton.BorderSizePixel = 2
-	claimButton.BorderColor3 = Color3.new(1, 1, 1)
+	claimButton.BorderSizePixel = 3
+	claimButton.BorderColor3 = Color3.fromRGB(76, 175, 80)
 	claimButton.Parent = billboardGui
 
-	-- Owner label
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = claimButton
+
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(76, 175, 80)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(46, 125, 50))
+	}
+	gradient.Rotation = 90
+	gradient.Parent = claimButton
+
 	local ownerLabel = Instance.new("TextLabel")
 	ownerLabel.Name = "OwnerLabel"
 	ownerLabel.Size = UDim2.new(1, 0, 0.5, 0)
-	ownerLabel.Position = UDim2.new(0, 0, 0.5, 0)
-	ownerLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	ownerLabel.Position = UDim2.new(0, 0, 0.25, 0)
+	ownerLabel.BackgroundColor3 = Color3.fromRGB(46, 125, 50)
 	ownerLabel.Text = ""
 	ownerLabel.TextColor3 = Color3.new(1, 1, 1)
 	ownerLabel.TextScaled = true
 	ownerLabel.Font = Enum.Font.GothamBold
 	ownerLabel.Visible = false
 	ownerLabel.Parent = billboardGui
+
+	local ownerCorner = Instance.new("UICorner")
+	ownerCorner.CornerRadius = UDim.new(0, 8)
+	ownerCorner.Parent = ownerLabel
+
+	local ownerGradient = Instance.new("UIGradient")
+	ownerGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(76, 175, 80)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(46, 125, 50))
+	}
+	ownerGradient.Rotation = 90
+	ownerGradient.Parent = ownerLabel
 
 	return claimPart, claimButton, ownerLabel
 end
@@ -263,7 +300,3 @@ local function initializePlots()
 end
 
 initializePlots()
-
---Test Commit
---Hello
---Hey

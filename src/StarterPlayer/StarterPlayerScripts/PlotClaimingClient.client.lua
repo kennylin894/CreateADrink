@@ -6,11 +6,9 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Wait for RemoteEvents
 local plotEvents = ReplicatedStorage:WaitForChild("PlotEvents")
 local notificationRemote = plotEvents:WaitForChild("ShowNotification")
 
--- Create notification GUI
 local function createNotificationGui()
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "PlotNotifications"
@@ -23,49 +21,50 @@ local function createNotificationGui()
 
 	local notificationFrame = Instance.new("Frame")
 	notificationFrame.Name = "NotificationFrame"
-	notificationFrame.Size = UDim2.new(0, 500, 0, 150)
-	notificationFrame.Position = UDim2.new(0.5, -250, 0, -150)
+	notificationFrame.Size = UDim2.new(0, 300, 0, 70) -- Fixed width
+	notificationFrame.Position = UDim2.new(0.5, 0, 0, -70) -- Start above screen
 	notificationFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 	notificationFrame.BorderSizePixel = 0
 	notificationFrame.ZIndex = 1000
+	notificationFrame.AnchorPoint = Vector2.new(0.5, 0) -- This is the key for centering!
 	notificationFrame.Parent = screenGui
 
 	-- Rounded corners
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
+	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = notificationFrame
 
 	-- Title label
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "TitleLabel"
-	titleLabel.Size = UDim2.new(1, 0, 0.4, 0)
-	titleLabel.Position = UDim2.new(0, 0, 0, 0)
+	titleLabel.Size = UDim2.new(1, -10, 0.5, 0) -- Add padding
+	titleLabel.Position = UDim2.new(0, 5, 0, 0) -- Center with padding
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = "Notification"
 	titleLabel.TextColor3 = Color3.new(1, 1, 1)
-	titleLabel.TextSize = 16
-	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.TextSize = 14
+	titleLabel.Font = Enum.Font.GothamBold -- Make title bold
+	titleLabel.TextWrapped = true
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Center
 	titleLabel.TextYAlignment = Enum.TextYAlignment.Center
-	titleLabel.TextStrokeTransparency = 0.5
+	titleLabel.TextStrokeTransparency = 0
 	titleLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	titleLabel.ZIndex = 1001
 	titleLabel.Parent = notificationFrame
 
-	-- Message label
 	local messageLabel = Instance.new("TextLabel")
 	messageLabel.Name = "MessageLabel"
-	messageLabel.Size = UDim2.new(1, 0, 0.6, 0)
-	messageLabel.Position = UDim2.new(0, 0, 0.4, 0)
+	messageLabel.Size = UDim2.new(1, -10, 0.5, 0) -- Add padding
+	messageLabel.Position = UDim2.new(0, 5, 0.5, 0) -- Center with padding
 	messageLabel.BackgroundTransparency = 1
 	messageLabel.Text = "Message"
 	messageLabel.TextColor3 = Color3.new(1, 1, 1)
-	messageLabel.TextSize = 14
+	messageLabel.TextSize = 12
 	messageLabel.Font = Enum.Font.Gotham
 	messageLabel.TextWrapped = true
 	messageLabel.TextXAlignment = Enum.TextXAlignment.Center
 	messageLabel.TextYAlignment = Enum.TextYAlignment.Center
-	messageLabel.TextStrokeTransparency = 0.5
+	messageLabel.TextStrokeTransparency = 0
 	messageLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	messageLabel.ZIndex = 1001
 	messageLabel.Parent = notificationFrame
@@ -77,7 +76,6 @@ end
 local function showNotification(notificationType, title, message)
 	local screenGui, notificationFrame, titleLabel, messageLabel = createNotificationGui()
 
-	-- Set colors based on type
 	if notificationType == "success" then
 		notificationFrame.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
 		titleLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -91,19 +89,19 @@ local function showNotification(notificationType, title, message)
 	titleLabel.Text = title
 	messageLabel.Text = message
 
-	-- Slide down animation
+	-- FIXED: Slide down to perfectly centered position using AnchorPoint
 	local slideDownTween = TweenService:Create(
 		notificationFrame,
 		TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-		{Position = UDim2.new(0.5, -250, 0, 30)}
+		{Position = UDim2.new(0.5, 0, 0, 20)} -- Simple center position with AnchorPoint
 	)
 
-	-- Slide up and fade out
+	-- FIXED: Slide up animation with AnchorPoint centering
 	local slideUpTween = TweenService:Create(
 		notificationFrame,
 		TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
 		{
-			Position = UDim2.new(0.5, -250, 0, -150),
+			Position = UDim2.new(0.5, 0, 0, -80), -- Stay centered while moving up
 			BackgroundTransparency = 1
 		}
 	)
@@ -138,6 +136,3 @@ end
 notificationRemote.OnClientEvent:Connect(function(notificationType, title, message)
 	showNotification(notificationType, title, message)
 end)
-
---Commit Test
---Hey
