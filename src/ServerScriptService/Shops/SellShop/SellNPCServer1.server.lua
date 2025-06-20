@@ -8,21 +8,76 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 print("Sell NPC ServerScript started!")
 
--- Wait for existing crop system
-local plotEvents = ReplicatedStorage:WaitForChild("PlotEvents")
-local notificationRemote = plotEvents:WaitForChild("ShowNotification")
+-- Create leaderstats for players when they join
+local function onPlayerAdded(player)
+    local leaderstats = Instance.new("Folder")
+    leaderstats.Name = "leaderstats"
+    leaderstats.Parent = player
+    
+    local sippies = Instance.new("IntValue")
+    sippies.Name = "Sippies"
+    sippies.Value = 0
+    sippies.Parent = leaderstats
+    
+    print("Created leaderstats for", player.Name)
+end
+
+-- Connect to existing players and new players
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, player in pairs(Players:GetPlayers()) do
+    if not player:FindFirstChild("leaderstats") then
+        onPlayerAdded(player)
+    end
+end
+
+-- Wait for existing crop system (with error handling)
+local plotEvents = ReplicatedStorage:WaitForChild("PlotEvents", 10)
+local notificationRemote
+if plotEvents then
+    notificationRemote = plotEvents:WaitForChild("ShowNotification", 10)
+    if not notificationRemote then
+        warn("Could not find ShowNotification RemoteEvent!")
+    end
+else
+    warn("Could not find PlotEvents folder!")
+end
 
 -- Create RemoteEvent for sell system
-local sellRemote = Instance.new("RemoteEvent")
-sellRemote.Name = "SellRemote"
-sellRemote.Parent = ReplicatedStorage
+local sellRemote = ReplicatedStorage:FindFirstChild("SellRemote")
+if not sellRemote then
+    sellRemote = Instance.new("RemoteEvent")
+    sellRemote.Name = "SellRemote"
+    sellRemote.Parent = ReplicatedStorage
+    print("Created SellRemote")
+else
+    print("Found existing SellRemote")
+end
 
--- Create ClickDetector
-local clickDetector = Instance.new("ClickDetector")
-clickDetector.MaxActivationDistance = 10
-clickDetector.Parent = head
+-- Create ClickDetector (make sure head exists)
+if not head then
+    warn("No head found on NPC! Looking for other parts...")
+    -- Try to find any part to attach the ClickDetector to
+    for _, part in pairs(npc:GetChildren()) do
+        if part:IsA("BasePart") then
+            head = part
+            print("Using", part.Name, "for ClickDetector")
+            break
+        end
+    end
+end
 
-print("Sell NPC ClickDetector created")
+if head then
+    local clickDetector = head:FindFirstChild("ClickDetector")
+    if not clickDetector then
+        clickDetector = Instance.new("ClickDetector")
+        clickDetector.MaxActivationDistance = 10
+        clickDetector.Parent = head
+        print("Created ClickDetector on", head.Name)
+    end
+else
+    warn("Could not find any part to attach ClickDetector to!")
+    return
+end
 
 -- Crop sell prices (what you get for selling harvested crops)
 local CROP_SELL_PRICES = {
@@ -37,6 +92,16 @@ local CROP_SELL_PRICES = {
 	grape = 28,
 	cucumber = 10
 }
+
+-- Function to send notification (with fallback)
+local function sendNotification(player, notificationType, title, message)
+    if notificationRemote then
+        notificationRemote:FireClient(player, notificationType, title, message)
+    else
+        -- Fallback: print to console if notification system isn't available
+        print("Notification for", player.Name, ":", title, "-", message)
+    end
+end
 
 -- Function to count player's harvested crops (matches your crop system)
 local function countPlayerCrops(player, cropType)
@@ -106,13 +171,9 @@ local function removePlayerCrops(player, cropType, amount)
 	end
 
 	local newCount = currentCount - amount
-	local wasInCharacter = targetTool.Parent == player.Character
 
 	-- Remove the old tool
 	targetTool:Destroy()
-
-	-- If any crops left, we don't need to recreate the tool for selling
-	-- The crop system will handle recreation if needed
 
 	return true
 end
@@ -184,14 +245,14 @@ local function handleSell(player, itemType, amount)
 	-- Check if player has enough of this item
 	local currentCount = countPlayerCrops(player, itemType)
 	if currentCount < amount then
-		notificationRemote:FireClient(player, "error", "❌ Not Enough Items", 
+		sendNotification(player, "error", "❌ Not Enough Items", 
 			"You only have " .. currentCount .. " " .. itemType .. "(s)!")
 		return
 	end
 
 	-- Check if this item can be sold
 	if not CROP_SELL_PRICES[itemType] then
-		notificationRemote:FireClient(player, "error", "❌ Cannot Sell", 
+		sendNotification(player, "error", "❌ Cannot Sell", 
 			"This item cannot be sold!")
 		return
 	end
@@ -209,35 +270,49 @@ local function handleSell(player, itemType, amount)
 			if sippies then
 				sippies.Value = sippies.Value + totalPayment
 
-				notificationRemote:FireClient(player, "success", "💰 Items Sold!", 
+				sendNotification(player, "success", "💰 Items Sold!", 
 					"Sold " .. amount .. " " .. itemType .. "(s) for " .. totalPayment .. " sippies!")
 
 				-- Send updated inventory to client
 				local updatedInventory = getPlayerInventory(player)
 				sellRemote:FireClient(player, "updateInventory", updatedInventory)
 			else
-				notificationRemote:FireClient(player, "error", "❌ Error", "Could not find sippies!")
+				sendNotification(player, "error", "❌ Error", "Could not find sippies!")
 			end
 		else
-			notificationRemote:FireClient(player, "error", "❌ Error", "Could not find leaderstats!")
+			sendNotification(player, "error", "❌ Error", "Could not find leaderstats!")
 		end
 	else
-		notificationRemote:FireClient(player, "error", "❌ Sell Failed", 
+		sendNotification(player, "error", "❌ Sell Failed", 
 			"Could not remove items from inventory!")
 	end
 end
 
 -- Handle NPC click
-clickDetector.MouseClick:Connect(function(player)
-	print("Sell NPC clicked by", player.Name)
+local clickDetector = head:FindFirstChild("ClickDetector")
+if clickDetector then
+    clickDetector.MouseClick:Connect(function(player)
+        print("Sell NPC clicked by", player.Name)
 
-	-- Get player's inventory
-	local inventory = getPlayerInventory(player)
+        -- Get player's inventory
+        local inventory = getPlayerInventory(player)
 
-	-- Always open the sell shop, even if inventory is empty
-	print("Sending inventory to client:", #inventory, "items")
-	sellRemote:FireClient(player, "openSellShop", inventory)
-end)
+        -- Always open the sell shop, even if inventory is empty
+        print("Sending inventory to client:", #inventory, "items")
+        
+        -- Use pcall to catch any errors when firing to client
+        local success, error = pcall(function()
+            sellRemote:FireClient(player, "openSellShop", inventory)
+        end)
+        
+        if not success then
+            warn("Error firing to client:", error)
+        end
+    end)
+    print("ClickDetector connected successfully!")
+else
+    warn("Could not find ClickDetector!")
+end
 
 -- Handle sell requests
 sellRemote.OnServerEvent:Connect(function(player, action, ...)
