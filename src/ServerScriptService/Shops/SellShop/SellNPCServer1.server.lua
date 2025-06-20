@@ -79,18 +79,18 @@ else
     return
 end
 
--- Crop sell prices (what you get for selling harvested crops)
+-- Crop sell prices (PROGRESSIVE PRICING - what you get for selling harvested crops)
 local CROP_SELL_PRICES = {
-	strawberry = 15,
-	orange = 20,
-	apple = 12,
-	carrot = 8,
-	blueberry = 25,
-	mint = 30,
-	watermelon = 35,
-	lemon = 18,
-	grape = 28,
-	cucumber = 10
+	strawberry = 25,    -- Basic: 50% of seed cost (50 → 25)
+	carrot = 100,       -- Tier 2: 50% of seed cost (200 → 100)
+	apple = 250,        -- Tier 3: 50% of seed cost (500 → 250)
+	orange = 500,       -- Tier 4: 50% of seed cost (1000 → 500)
+	cucumber = 1000,    -- Tier 5: 50% of seed cost (2000 → 1000)
+	lemon = 2000,       -- Tier 6: 50% of seed cost (4000 → 2000)
+	blueberry = 4000,   -- Tier 7: 50% of seed cost (8000 → 4000)
+	mint = 7500,        -- Tier 8: 50% of seed cost (15000 → 7500)
+	grape = 15000,      -- Tier 9: 50% of seed cost (30000 → 15000)
+	watermelon = 30000  -- Tier 10: 50% of seed cost (60000 → 30000)
 }
 
 -- Function to send notification (with fallback)
@@ -103,11 +103,11 @@ local function sendNotification(player, notificationType, title, message)
     end
 end
 
--- Function to count player's harvested crops (matches your crop system)
+-- Function to count player's harvested crops (FIXED VERSION)
 local function countPlayerCrops(player, cropType)
 	if not player.Backpack then return 0 end
 
-	-- Check backpack
+	-- Only check backpack for crops (ignore equipped tools)
 	for _, tool in pairs(player.Backpack:GetChildren()) do
 		if tool:IsA("Tool") then
 			local toolItemType = tool:GetAttribute("ItemType")
@@ -117,30 +117,19 @@ local function countPlayerCrops(player, cropType)
 		end
 	end
 
-	-- Check if holding the tool
-	if player.Character then
-		for _, tool in pairs(player.Character:GetChildren()) do
-			if tool:IsA("Tool") then
-				local toolItemType = tool:GetAttribute("ItemType")
-				if toolItemType == cropType then
-					return tool:GetAttribute("ItemCount") or 0
-				end
-			end
-		end
-	end
-
+	-- REMOVED character checking - crops should stay in backpack
 	return 0
 end
 
--- Function to remove crops from player inventory (matches your crop system)
+-- Function to remove crops from player inventory (FIXED VERSION)
 local function removePlayerCrops(player, cropType, amount)
 	if not player.Backpack then return false end
 
-	-- Find the tool
+	-- Find the tool in backpack only
 	local targetTool = nil
 	local currentCount = 0
 
-	-- Check backpack first
+	-- Only check backpack for crops
 	for _, tool in pairs(player.Backpack:GetChildren()) do
 		if tool:IsA("Tool") then
 			local toolItemType = tool:GetAttribute("ItemType")
@@ -152,19 +141,7 @@ local function removePlayerCrops(player, cropType, amount)
 		end
 	end
 
-	-- Check if holding the tool
-	if not targetTool and player.Character then
-		for _, tool in pairs(player.Character:GetChildren()) do
-			if tool:IsA("Tool") then
-				local toolItemType = tool:GetAttribute("ItemType")
-				if toolItemType == cropType then
-					targetTool = tool
-					currentCount = tool:GetAttribute("ItemCount") or 0
-					break
-				end
-			end
-		end
-	end
+	-- REMOVED character checking - crops should stay in backpack
 
 	if not targetTool or currentCount < amount then
 		return false

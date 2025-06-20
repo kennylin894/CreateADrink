@@ -1,3 +1,4 @@
+-- CropSystemScript.server.lua
 -- LocalScript in StarterPlayerScripts
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -75,14 +76,15 @@ subtitleLabel.TextScaled = true
 subtitleLabel.Font = Enum.Font.SourceSans
 subtitleLabel.Parent = shopFrame
 
--- Close button
+-- Close button (FIXED)
 local closeButton = Instance.new("TextButton")
 closeButton.Name = "CloseButton"
 closeButton.Size = UDim2.new(0, 40, 0, 40)
 closeButton.Position = UDim2.new(1, -50, 0, 10)
-closeButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+closeButton.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
+closeButton.BackgroundTransparency = 0
 closeButton.BorderSizePixel = 0
-closeButton.Text = "✕"
+closeButton.Text = "X"
 closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeButton.TextScaled = true
 closeButton.Font = Enum.Font.SourceSansBold
@@ -91,6 +93,20 @@ closeButton.Parent = shopFrame
 local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 8)
 closeCorner.Parent = closeButton
+
+-- Close button hover effects
+closeButton.MouseEnter:Connect(function()
+    TweenService:Create(closeButton, TweenInfo.new(0.2), {
+        BackgroundColor3 = Color3.fromRGB(220, 20, 60),
+        TextColor3 = Color3.fromRGB(255, 255, 255)
+    }):Play()
+end)
+closeButton.MouseLeave:Connect(function()
+    TweenService:Create(closeButton, TweenInfo.new(0.2), {
+        BackgroundColor3 = Color3.fromRGB(34, 139, 34),
+        TextColor3 = Color3.fromRGB(255, 255, 255)
+    }):Play()
+end)
 
 -- Scrolling frame for items
 local scrollFrame = Instance.new("ScrollingFrame")
@@ -136,6 +152,9 @@ local function getCropEmoji(itemId)
     else return "🌱"
     end
 end
+
+-- DEBOUNCE TABLE TO PREVENT DOUBLE CLICKING
+local clickDebounce = {}
 
 -- Function to create shop items
 local function createShopItems(items)
@@ -256,8 +275,22 @@ local function createShopItems(items)
         buyCorner.CornerRadius = UDim.new(0, 8)
         buyCorner.Parent = buyButton
         
-        -- Buy button click
+        -- Buy button click - FIXED: Added debounce to prevent double clicking
         buyButton.MouseButton1Click:Connect(function()
+            -- DEBOUNCE CHECK
+            local itemKey = player.UserId .. "_" .. item.id
+            if clickDebounce[itemKey] then
+                print("Click blocked - too fast!")
+                return
+            end
+            
+            -- Set debounce for 1 second
+            clickDebounce[itemKey] = true
+            spawn(function()
+                wait(1)
+                clickDebounce[itemKey] = nil
+            end)
+            
             print("Buy button clicked for", item.name)
             shopRemote:FireServer("buyItem", item)
         end)

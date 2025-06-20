@@ -24,11 +24,85 @@ sellGui.Name = "SellShopGui"
 sellGui.ResetOnSpawn = false
 sellGui.Parent = playerGui
 
--- Main sell frame
+-- Confirmation dialog (separate ScreenGui to appear on top)
+local confirmGui = Instance.new("ScreenGui")
+confirmGui.Name = "ConfirmationGui"
+confirmGui.ResetOnSpawn = false
+confirmGui.Parent = playerGui
+
+local confirmationFrame = Instance.new("Frame")
+confirmationFrame.Name = "ConfirmationFrame"
+confirmationFrame.Size = UDim2.new(0, 350, 0, 150)
+confirmationFrame.Position = UDim2.new(0.5, -175, 0.5, -75)
+confirmationFrame.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+confirmationFrame.BorderSizePixel = 0
+confirmationFrame.Visible = false
+confirmationFrame.Parent = confirmGui
+
+local confirmCorner = Instance.new("UICorner")
+confirmCorner.CornerRadius = UDim.new(0, 15)
+confirmCorner.Parent = confirmationFrame
+
+-- Confirmation title
+local confirmTitle = Instance.new("TextLabel")
+confirmTitle.Size = UDim2.new(1, -20, 0, 35)
+confirmTitle.Position = UDim2.new(0, 10, 0, 10)
+confirmTitle.BackgroundTransparency = 1
+confirmTitle.Text = "💰 Sell All Confirmation"
+confirmTitle.TextColor3 = Color3.fromRGB(139, 69, 19)
+confirmTitle.TextScaled = true
+confirmTitle.Font = Enum.Font.SourceSansBold
+confirmTitle.Parent = confirmationFrame
+
+-- Confirmation message
+local confirmMessage = Instance.new("TextLabel")
+confirmMessage.Size = UDim2.new(1, -20, 0, 50)
+confirmMessage.Position = UDim2.new(0, 10, 0, 40)
+confirmMessage.BackgroundTransparency = 1
+confirmMessage.Text = "Sell all crops for sippies?"
+confirmMessage.TextColor3 = Color3.fromRGB(80, 80, 80)
+confirmMessage.TextScaled = true
+confirmMessage.Font = Enum.Font.SourceSansBold
+confirmMessage.TextWrapped = true
+confirmMessage.Parent = confirmationFrame
+
+-- Yes button
+local yesButton = Instance.new("TextButton")
+yesButton.Size = UDim2.new(0, 100, 0, 35)
+yesButton.Position = UDim2.new(0, 40, 0, 100)
+yesButton.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
+yesButton.BorderSizePixel = 0
+yesButton.Text = "Sell All"
+yesButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+yesButton.TextScaled = true
+yesButton.Font = Enum.Font.SourceSansBold
+yesButton.Parent = confirmationFrame
+
+local yesCorner = Instance.new("UICorner")
+yesCorner.CornerRadius = UDim.new(0, 8)
+yesCorner.Parent = yesButton
+
+-- No button
+local noButton = Instance.new("TextButton")
+noButton.Size = UDim2.new(0, 100, 0, 35)
+noButton.Position = UDim2.new(0, 210, 0, 100)
+noButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+noButton.BorderSizePixel = 0
+noButton.Text = "Cancel"
+noButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+noButton.TextScaled = true
+noButton.Font = Enum.Font.SourceSansBold
+noButton.Parent = confirmationFrame
+
+local noCorner = Instance.new("UICorner")
+noCorner.CornerRadius = UDim.new(0, 8)
+noCorner.Parent = noButton
+
+-- Main sell frame (FIXED: Same size as buy shop)
 local sellFrame = Instance.new("Frame")
 sellFrame.Name = "SellFrame"
-sellFrame.Size = UDim2.new(0, 700, 0, 500)
-sellFrame.Position = UDim2.new(0.5, -350, 0.5, -250)
+sellFrame.Size = UDim2.new(0, 600, 0, 450)
+sellFrame.Position = UDim2.new(0.5, -300, 0.5, -225)
 sellFrame.BackgroundColor3 = Color3.fromRGB(139, 69, 19) -- Brown theme for selling
 sellFrame.BorderSizePixel = 0
 sellFrame.Visible = false
@@ -62,11 +136,11 @@ titleLabel.TextStrokeTransparency = 0
 titleLabel.TextStrokeColor3 = Color3.fromRGB(101, 67, 33)
 titleLabel.Parent = sellFrame
 
--- Subtitle
+-- Subtitle (FIXED: Smaller to prevent overlap)
 local subtitleLabel = Instance.new("TextLabel")
 subtitleLabel.Name = "Subtitle"
-subtitleLabel.Size = UDim2.new(1, -20, 0, 25)
-subtitleLabel.Position = UDim2.new(0, 10, 0, 50)
+subtitleLabel.Size = UDim2.new(1, -20, 0, 20)
+subtitleLabel.Position = UDim2.new(0, 10, 0, 55)
 subtitleLabel.BackgroundTransparency = 1
 subtitleLabel.Text = "Sell your harvested crops for sippies!"
 subtitleLabel.TextColor3 = Color3.fromRGB(240, 248, 255)
@@ -74,14 +148,15 @@ subtitleLabel.TextScaled = true
 subtitleLabel.Font = Enum.Font.SourceSans
 subtitleLabel.Parent = sellFrame
 
--- Close button
+-- Close button (FIXED: Proper X button)
 local closeButton = Instance.new("TextButton")
 closeButton.Name = "CloseButton"
 closeButton.Size = UDim2.new(0, 40, 0, 40)
 closeButton.Position = UDim2.new(1, -50, 0, 10)
-closeButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+closeButton.BackgroundColor3 = Color3.fromRGB(139, 69, 19)
+closeButton.BackgroundTransparency = 0
 closeButton.BorderSizePixel = 0
-closeButton.Text = "✕"
+closeButton.Text = "X"
 closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeButton.TextScaled = true
 closeButton.Font = Enum.Font.SourceSansBold
@@ -90,6 +165,20 @@ closeButton.Parent = sellFrame
 local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 8)
 closeCorner.Parent = closeButton
+
+-- Close button hover effects
+closeButton.MouseEnter:Connect(function()
+    TweenService:Create(closeButton, TweenInfo.new(0.2), {
+        BackgroundColor3 = Color3.fromRGB(220, 20, 60),
+        TextColor3 = Color3.fromRGB(255, 255, 255)
+    }):Play()
+end)
+closeButton.MouseLeave:Connect(function()
+    TweenService:Create(closeButton, TweenInfo.new(0.2), {
+        BackgroundColor3 = Color3.fromRGB(139, 69, 19),
+        TextColor3 = Color3.fromRGB(255, 255, 255)
+    }):Play()
+end)
 
 -- Scrolling frame for items
 local scrollFrame = Instance.new("ScrollingFrame")
@@ -139,7 +228,7 @@ end
 -- Function to create number input
 local function createNumberInput(parent, maxValue, onChanged)
     local inputFrame = Instance.new("Frame")
-    inputFrame.Size = UDim2.new(0, 120, 0, 30)
+    inputFrame.Size = UDim2.new(0, 100, 0, 30)
     inputFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     inputFrame.BorderSizePixel = 1
     inputFrame.BorderColor3 = Color3.fromRGB(200, 200, 200)
@@ -247,10 +336,10 @@ local function createSellItems(inventory)
         cropEmoji.Font = Enum.Font.SourceSans
         cropEmoji.Parent = itemFrame
         
-        -- Item name and count
+        -- Item name and count (FIXED: Better sizing)
         local itemName = Instance.new("TextLabel")
         itemName.Name = "ItemName"
-        itemName.Size = UDim2.new(0.25, 0, 0.4, 0)
+        itemName.Size = UDim2.new(0, 120, 0, 25)
         itemName.Position = UDim2.new(0, 95, 0, 8)
         itemName.BackgroundTransparency = 1
         itemName.Text = item.name .. " x" .. item.count
@@ -260,11 +349,11 @@ local function createSellItems(inventory)
         itemName.TextXAlignment = Enum.TextXAlignment.Left
         itemName.Parent = itemFrame
         
-        -- Price per item
+        -- Price per item (FIXED: Better positioning)
         local priceLabel = Instance.new("TextLabel")
         priceLabel.Name = "PriceLabel"
-        priceLabel.Size = UDim2.new(0.2, 0, 0.3, 0)
-        priceLabel.Position = UDim2.new(0, 95, 0.4, 0)
+        priceLabel.Size = UDim2.new(0, 120, 0, 20)
+        priceLabel.Position = UDim2.new(0, 95, 0, 35)
         priceLabel.BackgroundTransparency = 1
         priceLabel.Text = item.sellPrice .. " 🥤 each"
         priceLabel.TextColor3 = Color3.fromRGB(255, 140, 0)
@@ -273,40 +362,42 @@ local function createSellItems(inventory)
         priceLabel.TextXAlignment = Enum.TextXAlignment.Left
         priceLabel.Parent = itemFrame
         
-        -- Amount selector
+        -- Amount selector label (FIXED: Moved right)
         local selectorLabel = Instance.new("TextLabel")
-        selectorLabel.Size = UDim2.new(0.1, 0, 0.3, 0)
-        selectorLabel.Position = UDim2.new(0.3, 0, 0.1, 0)
+        selectorLabel.Size = UDim2.new(0, 60, 0, 20)
+        selectorLabel.Position = UDim2.new(0, 230, 0, 8)
         selectorLabel.BackgroundTransparency = 1
         selectorLabel.Text = "Amount:"
         selectorLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
         selectorLabel.TextScaled = true
         selectorLabel.Font = Enum.Font.SourceSans
+        selectorLabel.TextXAlignment = Enum.TextXAlignment.Left
         selectorLabel.Parent = itemFrame
         
         local currentSellAmount = 1
         local totalValueLabel = Instance.new("TextLabel")
         totalValueLabel.Name = "TotalValue"
-        totalValueLabel.Size = UDim2.new(0.15, 0, 0.3, 0)
-        totalValueLabel.Position = UDim2.new(0.3, 0, 0.6, 0)
+        totalValueLabel.Size = UDim2.new(0, 100, 0, 20)
+        totalValueLabel.Position = UDim2.new(0, 230, 0, 60)
         totalValueLabel.BackgroundTransparency = 1
         totalValueLabel.Text = "= " .. item.sellPrice .. " 🥤"
         totalValueLabel.TextColor3 = Color3.fromRGB(34, 139, 34)
         totalValueLabel.TextScaled = true
         totalValueLabel.Font = Enum.Font.SourceSansBold
+        totalValueLabel.TextXAlignment = Enum.TextXAlignment.Left
         totalValueLabel.Parent = itemFrame
         
         local numberInput, updateAmount = createNumberInput(itemFrame, item.count, function(newAmount)
             currentSellAmount = newAmount
             totalValueLabel.Text = "= " .. (newAmount * item.sellPrice) .. " 🥤"
         end)
-        numberInput.Position = UDim2.new(0.3, 0, 0.35, 0)
+        numberInput.Position = UDim2.new(0, 230, 0, 30)
         
-        -- Sell button
+        -- Sell button (FIXED: Moved far right)
         local sellButton = Instance.new("TextButton")
         sellButton.Name = "SellButton"
-        sellButton.Size = UDim2.new(0.12, 0, 0.4, 0)
-        sellButton.Position = UDim2.new(0.55, 0, 0.1, 0)
+        sellButton.Size = UDim2.new(0, 80, 0, 35)
+        sellButton.Position = UDim2.new(0, 350, 0, 10)
         sellButton.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
         sellButton.BorderSizePixel = 0
         sellButton.Text = "SELL"
@@ -319,11 +410,11 @@ local function createSellItems(inventory)
         sellCorner.CornerRadius = UDim.new(0, 8)
         sellCorner.Parent = sellButton
         
-        -- Sell All button
+        -- Sell All button (FIXED: Moved far right)
         local sellAllButton = Instance.new("TextButton")
         sellAllButton.Name = "SellAllButton"
-        sellAllButton.Size = UDim2.new(0.12, 0, 0.4, 0)
-        sellAllButton.Position = UDim2.new(0.55, 0, 0.55, 0)
+        sellAllButton.Size = UDim2.new(0, 80, 0, 35)
+        sellAllButton.Position = UDim2.new(0, 350, 0, 55)
         sellAllButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
         sellAllButton.BorderSizePixel = 0
         sellAllButton.Text = "SELL ALL"
@@ -343,8 +434,13 @@ local function createSellItems(inventory)
         end)
         
         sellAllButton.MouseButton1Click:Connect(function()
-            print("Selling all", item.itemType)
-            sellRemote:FireServer("sellAll", item.itemType)
+            -- Show confirmation dialog
+            confirmMessage.Text = "Sell all " .. item.name .. "?"
+            confirmationFrame.Visible = true
+            
+            -- Store the item type for confirmation
+            confirmationFrame:SetAttribute("ItemType", item.itemType)
+            confirmationFrame:SetAttribute("ItemName", item.name)
         end)
         
         -- Hover effects
@@ -368,7 +464,7 @@ local function createSellItems(inventory)
     print("Sell items created successfully!")
 end
 
--- Close button functionality
+-- Close button functionality (FIXED: Updated for new size)
 closeButton.MouseButton1Click:Connect(function()
     print("Close button clicked")
     local tween = TweenService:Create(sellFrame, TweenInfo.new(0.3), {
@@ -378,12 +474,42 @@ closeButton.MouseButton1Click:Connect(function()
     tween:Play()
     tween.Completed:Connect(function()
         sellFrame.Visible = false
-        sellFrame.Size = UDim2.new(0, 700, 0, 500)
-        sellFrame.Position = UDim2.new(0.5, -350, 0.5, -250)
+        sellFrame.Size = UDim2.new(0, 600, 0, 450)
+        sellFrame.Position = UDim2.new(0.5, -300, 0.5, -225)
     end)
 end)
 
--- Handle remote events
+-- Confirmation dialog functionality
+yesButton.MouseButton1Click:Connect(function()
+    local itemType = confirmationFrame:GetAttribute("ItemType")
+    if itemType then
+        print("Confirmed: Selling all", itemType)
+        sellRemote:FireServer("sellAll", itemType)
+    end
+    confirmationFrame.Visible = false
+end)
+
+noButton.MouseButton1Click:Connect(function()
+    print("Cancelled sell all")
+    confirmationFrame.Visible = false
+end)
+
+-- Hover effects for confirmation buttons
+yesButton.MouseEnter:Connect(function()
+    TweenService:Create(yesButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 170, 50)}):Play()
+end)
+yesButton.MouseLeave:Connect(function()
+    TweenService:Create(yesButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(34, 139, 34)}):Play()
+end)
+
+noButton.MouseEnter:Connect(function()
+    TweenService:Create(noButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(150, 150, 150)}):Play()
+end)
+noButton.MouseLeave:Connect(function()
+    TweenService:Create(noButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(120, 120, 120)}):Play()
+end)
+
+-- Handle remote events (FIXED: Updated for new size)
 sellRemote.OnClientEvent:Connect(function(action, data)
     print("Client received event:", action)
     
@@ -392,12 +518,12 @@ sellRemote.OnClientEvent:Connect(function(action, data)
         sellFrame.Visible = true
         createSellItems(data)
         
-        -- Opening animation
+        -- Opening animation (FIXED: Updated for new size)
         sellFrame.Size = UDim2.new(0, 0, 0, 0)
         sellFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
         local tween = TweenService:Create(sellFrame, TweenInfo.new(0.4), {
-            Size = UDim2.new(0, 700, 0, 500),
-            Position = UDim2.new(0.5, -350, 0.5, -250)
+            Size = UDim2.new(0, 600, 0, 450),
+            Position = UDim2.new(0.5, -300, 0.5, -225)
         })
         tween:Play()
         

@@ -23,66 +23,113 @@ else
 	print("Found existing ShopRemote")
 end
 
--- Create ClickDetector
-local clickDetector = Instance.new("ClickDetector")
-clickDetector.MaxActivationDistance = 10
-clickDetector.Parent = head
+-- PROXIMITY PROMPT ONLY (NO CLICKDETECTOR)
+if not head then
+    warn("No head found on NPC! Looking for other parts...")
+    -- Try to find any part to attach to
+    for _, part in pairs(npc:GetChildren()) do
+        if part:IsA("BasePart") then
+            head = part
+            print("Using", part.Name, "for ProximityPrompt")
+            break
+        end
+    end
+end
 
-print("ClickDetector created and parented to head")
+if head then
+    print("=== SETTING UP PROXIMITY PROMPT FOR SHOP ===")
+    
+    -- DESTROY ANY EXISTING CLICKDETECTORS OR PROXIMITY PROMPTS
+    for _, child in pairs(head:GetChildren()) do
+        if child:IsA("ClickDetector") then
+            print("DESTROYING SHOP CLICKDETECTOR!")
+            child:Destroy()
+        end
+        if child:IsA("ProximityPrompt") then
+            print("DESTROYING OLD SHOP PROXIMITY PROMPT!")
+            child:Destroy()
+        end
+    end
+    
+    wait(0.1) -- Small delay
+    
+    -- Create ProximityPrompt
+    local proximityPrompt = Instance.new("ProximityPrompt")
+    proximityPrompt.ActionText = "Open Shop"
+    proximityPrompt.ObjectText = "Seed Shop"
+    proximityPrompt.HoldDuration = 0
+    proximityPrompt.MaxActivationDistance = 20
+    proximityPrompt.RequiresLineOfSight = false
+    proximityPrompt.Enabled = true
+    proximityPrompt.Parent = head
+    
+    print("=== SHOP PROXIMITY PROMPT CREATED ===")
+    
+    -- Handle ProximityPrompt trigger
+    proximityPrompt.Triggered:Connect(function(player)
+        print("=== SHOP PROXIMITY PROMPT TRIGGERED BY", player.Name, "===")
+        print("Sending shop data to client...")
+        shopRemote:FireClient(player, "openShop", shopItems)
+    end)
+    
+else
+    warn("Could not find any part to attach ProximityPrompt to!")
+    return
+end
 
--- Crop shop items data - SORTED BY PRICE (cheapest to most expensive)
+-- Crop shop items data - PROGRESSIVE PRICING SYSTEM
 local shopItems = {
 	{
-		name = "Carrot Seeds",
-		price = 15,
-		description = "Healthy veggies for nutritious drinks",
-		id = "carrot_seeds",
-		toolType = "carrot_seeds",
-		count = 1
-	},
-	{
-		name = "Cucumber Seeds",
-		price = 18,
-		description = "Cool veggies for spa waters",
-		id = "cucumber_seeds",
-		toolType = "cucumber_seeds",
-		count = 1
-	},
-	{
-		name = "Apple Seeds",
-		price = 20,
-		description = "Classic fruit for cider and juice",
-		id = "apple_seeds",
-		toolType = "apple_seeds",
-		count = 1
-	},
-	{
 		name = "Strawberry Seeds",
-		price = 25,
+		price = 50,  -- Basic starter item
 		description = "Sweet berries perfect for smoothies",
 		id = "strawberry_seeds",
 		toolType = "strawberry_seeds",
 		count = 1
 	},
 	{
-		name = "Lemon Seeds",
-		price = 28,
-		description = "Sour citrus for lemonades",
-		id = "lemon_seeds",
-		toolType = "lemon_seeds",
+		name = "Carrot Seeds",
+		price = 200,  -- Second tier
+		description = "Healthy veggies for nutritious drinks",
+		id = "carrot_seeds",
+		toolType = "carrot_seeds",
+		count = 1
+	},
+	{
+		name = "Apple Seeds",
+		price = 500,  -- Third tier
+		description = "Classic fruit for cider and juice",
+		id = "apple_seeds",
+		toolType = "apple_seeds",
 		count = 1
 	},
 	{
 		name = "Orange Seeds",
-		price = 30,
+		price = 1000,  -- Fourth tier
 		description = "Citrus fruits for fresh juice",
 		id = "orange_seeds",
 		toolType = "orange_seeds",
 		count = 1
 	},
 	{
+		name = "Cucumber Seeds",
+		price = 2000,  -- Fifth tier
+		description = "Cool veggies for spa waters",
+		id = "cucumber_seeds",
+		toolType = "cucumber_seeds",
+		count = 1
+	},
+	{
+		name = "Lemon Seeds",
+		price = 4000,  -- Sixth tier
+		description = "Sour citrus for lemonades",
+		id = "lemon_seeds",
+		toolType = "lemon_seeds",
+		count = 1
+	},
+	{
 		name = "Blueberry Seeds",
-		price = 35,
+		price = 8000,  -- Seventh tier
 		description = "Antioxidant-rich berries for health drinks",
 		id = "blueberry_seeds",
 		toolType = "blueberry_seeds",
@@ -90,7 +137,7 @@ local shopItems = {
 	},
 	{
 		name = "Mint Seeds",
-		price = 40,
+		price = 15000,  -- Eighth tier
 		description = "Fresh herbs for mojitos and teas",
 		id = "mint_seeds",
 		toolType = "mint_seeds",
@@ -98,7 +145,7 @@ local shopItems = {
 	},
 	{
 		name = "Grape Seeds",
-		price = 45,
+		price = 30000,  -- Ninth tier
 		description = "Perfect for grape juice and wine",
 		id = "grape_seeds",
 		toolType = "grape_seeds",
@@ -106,7 +153,7 @@ local shopItems = {
 	},
 	{
 		name = "Watermelon Seeds",
-		price = 50,
+		price = 60000,  -- Top tier
 		description = "Juicy melons for refreshing drinks",
 		id = "watermelon_seeds",
 		toolType = "watermelon_seeds",
@@ -240,9 +287,28 @@ local function givePlayerTool(player, toolType, amount)
 	print("📦 Gave " .. player.Name .. " " .. amount .. " " .. toolType .. " (Total: " .. newCount .. ")")
 end
 
--- Handle purchase - FIXED: Only use crop system notifications
+-- DEBOUNCE TABLE TO PREVENT DOUBLE PURCHASING
+local purchaseDebounce = {}
+
+-- Handle purchase - FIXED: Added debounce to prevent double buying
 local function handlePurchase(player, item)
 	print("Handling purchase for", player.Name, "item:", item.name)
+
+	-- DEBOUNCE CHECK - Prevent double buying
+	local playerId = player.UserId
+	local itemKey = playerId .. "_" .. item.id
+	
+	if purchaseDebounce[itemKey] then
+		print("Purchase blocked - too fast!")
+		return
+	end
+	
+	-- Set debounce for 1 second
+	purchaseDebounce[itemKey] = true
+	spawn(function()
+		wait(1)
+		purchaseDebounce[itemKey] = nil
+	end)
 
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then 
@@ -279,21 +345,12 @@ local function handlePurchase(player, item)
 	end
 end
 
--- Handle click on NPC
-clickDetector.MouseClick:Connect(function(player)
-	print("Crop Shop NPC clicked by", player.Name)
-	print("Sending shop data to client...")
-	shopRemote:FireClient(player, "openShop", shopItems)
-end)
-
-print("Click event connected!")
-
--- Handle server events
+-- Handle server events - FIXED: Added extra safety
 shopRemote.OnServerEvent:Connect(function(player, action, data)
 	print("Server received event:", action, "from", player.Name)
-	if action == "buyItem" then
+	if action == "buyItem" and data then
 		handlePurchase(player, data)
 	end
 end)
 
-print("Server event handler connected!")
+print("Crop Shop ServerScript ready with ProximityPrompt and no double buying!")
