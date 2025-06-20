@@ -203,9 +203,9 @@ end
 local function createSellItems(inventory)
     print("Creating sell items, count:", #inventory)
     
-    -- Clear existing items
+    -- Clear existing items AND empty labels
     for _, child in pairs(scrollFrame:GetChildren()) do
-        if child.Name == "SellItem" then
+        if child.Name == "SellItem" or child.Name == "EmptyLabel" then
             child:Destroy()
         end
     end

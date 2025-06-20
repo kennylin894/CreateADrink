@@ -178,13 +178,13 @@ local function removePlayerCrops(player, cropType, amount)
 	return true
 end
 
--- Function to get player's inventory
+-- Function to get player's inventory (FIXED VERSION)
 local function getPlayerInventory(player)
 	local inventory = {}
 
 	if not player.Backpack then return inventory end
 
-	-- Check backpack for harvested crops
+	-- Only check backpack for harvested crops (ignore equipped tools)
 	for _, tool in pairs(player.Backpack:GetChildren()) do
 		if tool:IsA("Tool") then
 			local itemType = tool:GetAttribute("ItemType")
@@ -203,37 +203,8 @@ local function getPlayerInventory(player)
 		end
 	end
 
-	-- Check if holding any crops
-	if player.Character then
-		for _, tool in pairs(player.Character:GetChildren()) do
-			if tool:IsA("Tool") then
-				local itemType = tool:GetAttribute("ItemType")
-				if itemType and CROP_SELL_PRICES[itemType] then
-					local count = tool:GetAttribute("ItemCount") or 0
-					if count > 0 then
-						-- Check if we already found this item type in backpack
-						local found = false
-						for _, item in pairs(inventory) do
-							if item.itemType == itemType then
-								found = true
-								break
-							end
-						end
-
-						if not found then
-							table.insert(inventory, {
-								name = itemType:gsub("^%l", string.upper),
-								itemType = itemType,
-								count = count,
-								sellPrice = CROP_SELL_PRICES[itemType],
-								totalValue = count * CROP_SELL_PRICES[itemType]
-							})
-						end
-					end
-				end
-			end
-		end
-	end
+	-- REMOVED the character checking part that was causing the issue
+	-- The crops should stay in backpack, so we don't need to check character
 
 	return inventory
 end
