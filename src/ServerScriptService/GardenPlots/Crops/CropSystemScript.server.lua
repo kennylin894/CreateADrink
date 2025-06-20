@@ -1,4 +1,4 @@
--- CROP SYSTEM SCRIPT - Put in ServerScriptService
+-- UPDATED CROP SYSTEM SCRIPT - Put in ServerScriptService
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -11,38 +11,134 @@ local cropRemote = Instance.new("RemoteEvent")
 cropRemote.Name = "CropSystem"
 cropRemote.Parent = plotEvents
 
--- Crop definitions
+-- UPDATED: All crop definitions from your shop
 local CROPS = {
 	strawberry = {
 		name = "Strawberry",
 		seedName = "Strawberry Seeds",
-		growthTime = 10,  -- 10 seconds
+		growthTime = 30,  -- 30 seconds
 		harvestCount = 3,
+		sellPrice = 15,
+		seedCost = 25
+	},
+	orange = {
+		name = "Orange",
+		seedName = "Orange Seeds",
+		growthTime = 45,  -- 45 seconds
+		harvestCount = 2,
+		sellPrice = 20,
+		seedCost = 30
+	},
+	apple = {
+		name = "Apple",
+		seedName = "Apple Seeds",
+		growthTime = 25,  -- 25 seconds
+		harvestCount = 4,
+		sellPrice = 12,
+		seedCost = 20
+	},
+	carrot = {
+		name = "Carrot",
+		seedName = "Carrot Seeds",
+		growthTime = 20,  -- 20 seconds
+		harvestCount = 5,
+		sellPrice = 8,
+		seedCost = 15
+	},
+	blueberry = {
+		name = "Blueberry",
+		seedName = "Blueberry Seeds",
+		growthTime = 40,  -- 40 seconds
+		harvestCount = 6,
+		sellPrice = 25,
+		seedCost = 35
+	},
+	mint = {
+		name = "Mint",
+		seedName = "Mint Seeds",
+		growthTime = 50,  -- 50 seconds
+		harvestCount = 2,
+		sellPrice = 30,
+		seedCost = 40
+	},
+	watermelon = {
+		name = "Watermelon",
+		seedName = "Watermelon Seeds",
+		growthTime = 60,  -- 60 seconds (longest)
+		harvestCount = 1,
+		sellPrice = 35,
+		seedCost = 50
+	},
+	lemon = {
+		name = "Lemon",
+		seedName = "Lemon Seeds",
+		growthTime = 35,  -- 35 seconds
+		harvestCount = 3,
+		sellPrice = 18,
+		seedCost = 28
+	},
+	grape = {
+		name = "Grape",
+		seedName = "Grape Seeds",
+		growthTime = 55,  -- 55 seconds
+		harvestCount = 4,
+		sellPrice = 28,
+		seedCost = 45
+	},
+	cucumber = {
+		name = "Cucumber",
+		seedName = "Cucumber Seeds",
+		growthTime = 25,  -- 25 seconds
+		harvestCount = 6,
 		sellPrice = 10,
-		seedCost = 5
+		seedCost = 18
 	}
 }
 
--- Function to create strawberry seeds tool with count
-local function createStrawberrySeedsTool(count)
+-- Function to create seed tools with count (matches your existing system)
+local function createSeedsTool(seedType, count)
 	local tool = Instance.new("Tool")
-	tool.Name = "Strawberry Seeds (" .. count .. ")"
-	tool.RequiresHandle = true
+	tool.Name = seedType:gsub("_", " "):gsub("(%a)(%a*)", function(a,b) return string.upper(a)..b end) .. " (" .. count .. ")"
+	tool.RequiresHandle = false
 	tool.CanBeDropped = false
 	
 	-- Store the count as an attribute
 	tool:SetAttribute("SeedCount", count)
-	tool:SetAttribute("SeedType", "strawberry_seeds")
+	tool:SetAttribute("SeedType", seedType)
 	
-	-- Create handle (the part you see in your hand)
+	-- Create handle
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"
 	handle.Size = Vector3.new(1, 1, 1)
 	handle.Material = Enum.Material.Neon
-	handle.Color = Color3.fromRGB(34, 139, 34)  -- Green
 	handle.Shape = Enum.PartType.Ball
 	handle.CanCollide = false
 	handle.Parent = tool
+	
+	-- Color based on crop type
+	if seedType == "strawberry_seeds" then
+		handle.Color = Color3.fromRGB(34, 139, 34)  -- Green
+	elseif seedType == "orange_seeds" then
+		handle.Color = Color3.fromRGB(255, 140, 0)  -- Orange
+	elseif seedType == "apple_seeds" then
+		handle.Color = Color3.fromRGB(50, 205, 50)  -- Light green
+	elseif seedType == "carrot_seeds" then
+		handle.Color = Color3.fromRGB(255, 165, 0)  -- Orange
+	elseif seedType == "blueberry_seeds" then
+		handle.Color = Color3.fromRGB(70, 130, 180)  -- Steel blue
+	elseif seedType == "mint_seeds" then
+		handle.Color = Color3.fromRGB(152, 251, 152)  -- Pale green
+	elseif seedType == "watermelon_seeds" then
+		handle.Color = Color3.fromRGB(34, 139, 34)  -- Dark green
+	elseif seedType == "lemon_seeds" then
+		handle.Color = Color3.fromRGB(255, 255, 0)  -- Yellow
+	elseif seedType == "grape_seeds" then
+		handle.Color = Color3.fromRGB(128, 0, 128)  -- Purple
+	elseif seedType == "cucumber_seeds" then
+		handle.Color = Color3.fromRGB(144, 238, 144)  -- Light green
+	else
+		handle.Color = Color3.fromRGB(34, 139, 34)  -- Default green
+	end
 	
 	-- Add a mesh for better appearance
 	local specialMesh = Instance.new("SpecialMesh")
@@ -52,7 +148,7 @@ local function createStrawberrySeedsTool(count)
 	
 	-- Add sparkles
 	local sparkles = Instance.new("Sparkles")
-	sparkles.Color = Color3.fromRGB(0, 255, 0)
+	sparkles.Color = handle.Color
 	sparkles.Parent = handle
 	
 	-- Add count display
@@ -75,30 +171,54 @@ local function createStrawberrySeedsTool(count)
 	return tool
 end
 
--- Function to create strawberry tool with count
-local function createStrawberryTool(count)
+-- Function to create harvested crop tools (NEW: supports all crop types)
+local function createCropTool(cropType, count)
 	local tool = Instance.new("Tool")
-	tool.Name = "Strawberry (" .. count .. ")"
-	tool.RequiresHandle = true
+	tool.Name = cropType:gsub("^%l", string.upper) .. " (" .. count .. ")"
+	tool.RequiresHandle = false
 	tool.CanBeDropped = false
 	
 	-- Store the count as an attribute
 	tool:SetAttribute("ItemCount", count)
-	tool:SetAttribute("ItemType", "strawberry")
+	tool:SetAttribute("ItemType", cropType)
 	
 	-- Create handle
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"
 	handle.Size = Vector3.new(0.8, 0.6, 0.8)
 	handle.Material = Enum.Material.Neon
-	handle.Color = Color3.fromRGB(220, 20, 60)  -- Red
 	handle.Shape = Enum.PartType.Ball
 	handle.CanCollide = false
 	handle.Parent = tool
 	
+	-- Color based on crop type
+	if cropType == "strawberry" then
+		handle.Color = Color3.fromRGB(220, 20, 60)  -- Red
+	elseif cropType == "orange" then
+		handle.Color = Color3.fromRGB(255, 140, 0)  -- Orange
+	elseif cropType == "apple" then
+		handle.Color = Color3.fromRGB(255, 0, 0)  -- Red
+	elseif cropType == "carrot" then
+		handle.Color = Color3.fromRGB(255, 140, 0)  -- Orange
+	elseif cropType == "blueberry" then
+		handle.Color = Color3.fromRGB(70, 130, 180)  -- Blue
+	elseif cropType == "mint" then
+		handle.Color = Color3.fromRGB(152, 251, 152)  -- Light green
+	elseif cropType == "watermelon" then
+		handle.Color = Color3.fromRGB(255, 20, 147)  -- Pink
+	elseif cropType == "lemon" then
+		handle.Color = Color3.fromRGB(255, 255, 0)  -- Yellow
+	elseif cropType == "grape" then
+		handle.Color = Color3.fromRGB(128, 0, 128)  -- Purple
+	elseif cropType == "cucumber" then
+		handle.Color = Color3.fromRGB(50, 205, 50)  -- Green
+	else
+		handle.Color = Color3.fromRGB(220, 20, 60)  -- Default red
+	end
+	
 	-- Add sparkles
 	local sparkles = Instance.new("Sparkles")
-	sparkles.Color = Color3.fromRGB(255, 0, 0)
+	sparkles.Color = handle.Color
 	sparkles.Parent = handle
 	
 	-- Add count display
@@ -164,10 +284,10 @@ local function givePlayerTool(player, toolType, amount)
 	
 	-- Create new tool with updated count
 	local tool
-	if toolType == "strawberry_seeds" then
-		tool = createStrawberrySeedsTool(newCount)
-	elseif toolType == "strawberry" then
-		tool = createStrawberryTool(newCount)
+	if string.find(toolType, "_seeds") then
+		tool = createSeedsTool(toolType, newCount)
+	else
+		tool = createCropTool(toolType, newCount)
 	end
 	
 	if tool then
@@ -253,10 +373,10 @@ local function removePlayerTool(player, toolType, amount)
 	-- Create new tool with updated count if any left
 	if newCount > 0 then
 		local newTool
-		if toolType == "strawberry_seeds" then
-			newTool = createStrawberrySeedsTool(newCount)
-		elseif toolType == "strawberry" then
-			newTool = createStrawberryTool(newCount)
+		if string.find(toolType, "_seeds") then
+			newTool = createSeedsTool(toolType, newCount)
+		else
+			newTool = createCropTool(toolType, newCount)
 		end
 		
 		if newTool then
@@ -301,19 +421,31 @@ end)
 -- Handle crop system requests
 cropRemote.OnServerEvent:Connect(function(player, action, ...)
 	if action == "check_inventory" then
-		local seedCount = countPlayerTools(player, "strawberry_seeds")
-		local strawberryCount = countPlayerTools(player, "strawberry")
-		
+		-- Check all crop types
 		local message = "Your Inventory:\n"
-		if seedCount > 0 then
-			message = message .. "🌱 Strawberry Seeds: " .. seedCount .. "\n"
-		end
-		if strawberryCount > 0 then
-			message = message .. "🍓 Strawberries: " .. strawberryCount .. "\n"
+		local hasItems = false
+		
+		-- Check seeds
+		for cropType, cropData in pairs(CROPS) do
+			local seedType = cropType .. "_seeds"
+			local seedCount = countPlayerTools(player, seedType)
+			if seedCount > 0 then
+				message = message .. "🌱 " .. cropData.seedName .. ": " .. seedCount .. "\n"
+				hasItems = true
+			end
 		end
 		
-		if seedCount == 0 and strawberryCount == 0 then
-			message = "Your inventory is empty!\nClaim a plot to get starter seeds!"
+		-- Check harvested crops
+		for cropType, cropData in pairs(CROPS) do
+			local cropCount = countPlayerTools(player, cropType)
+			if cropCount > 0 then
+				message = message .. "🍓 " .. cropData.name .. "s: " .. cropCount .. "\n"
+				hasItems = true
+			end
+		end
+		
+		if not hasItems then
+			message = "Your inventory is empty!\nBuy seeds from the shop or claim a plot to get starter seeds!"
 		end
 		
 		notificationRemote:FireClient(player, "success", "📦 Inventory", message)
@@ -354,4 +486,4 @@ Players.PlayerRemoving:Connect(function(player)
 	-- No need to clean up backpack items - Roblox handles this automatically
 end)
 
-print("🌾 Crop system initialized!")
+print("🌾 Updated crop system initialized with all crop types!")
